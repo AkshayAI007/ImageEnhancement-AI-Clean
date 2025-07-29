@@ -1,8 +1,5 @@
-gfpgan>=0.2.1
-opencv-python
-gunicorn==21.2.0
-Flask==3.1.1
 # Core Flask and web server
+Flask==3.1.1
 flask-cors==6.0.1
 gunicorn==21.2.0
 Werkzeug==3.1.3
@@ -11,13 +8,14 @@ Werkzeug==3.1.3
 torch==2.7.1
 torchvision==0.22.1
 pillow==11.3.0
-opencv-python-headless==4.12.0.88     # headless avoids GUI-related errors
-numpy==1.26.4                          # compatible with realesrgan stack
+opencv-python-headless==4.12.0.88
+numpy>=2.0,<2.3.0  # Compatible with opencv-python-headless and torchvision
 
 # RealESRGAN stack (official)
 realesrgan==0.3.0
 basicsr==1.4.2
 facexlib==0.3.0
+gfpgan>=0.2.1
 
 # Utilities
 gdown==5.2.0
@@ -32,4 +30,3 @@ filelock==3.18.0
 fsspec==2025.7.0
 packaging==25.0
 setuptools==80.9.0
-
