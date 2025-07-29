@@ -1,93 +1,113 @@
-#!/usr/bin/env python3
-"""
-Setup script for Real-ESRGAN Image Enhancement API
-Compatible with Linux/Render deployment
-"""
+#!/usr/bin/env python
 
+from setuptools import find_packages, setup
+
+import os
 import subprocess
-import sys
-import importlib.util
+import time
 
-def run_command(command, description):
-    """Run a command and handle errors"""
-    print(f"🔧 {description}")
-    print("=" * 50)
-    
-    try:
-        result = subprocess.run(command, shell=True, check=True, 
-                              capture_output=True, text=True)
-        print(f"✅ {description} completed successfully")
-        if result.stdout:
-            print(result.stdout)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"❌ {description} failed")
-        print(f"Error: {e.stderr}")
-        return False
+version_file = 'realesrgan/version.py'
 
-def check_import(module_name, package_name=None):
-    """Check if a module can be imported"""
-    try:
-        importlib.import_module(module_name)
-        print(f"✅ {package_name or module_name} imported successfully")
-        return True
-    except ImportError as e:
-        print(f"❌ Failed to import {package_name or module_name}: {e}")
-        return False
 
-def main():
-    print("🔧 Setting up Real-ESRGAN Image Enhancement API")
-    print("=" * 60)
-    
-    # Test basic imports
-    print("🧪 Testing basic imports...")
-    
-    # Check if torch is available
-    if not check_import("torch"):
-        print("❌ PyTorch not found. Please check your requirements.txt")
-        return False
-    
-    # Check torch version and CUDA
-    try:
-        import torch
-        print(f"✅ PyTorch version: {torch.__version__}")
-        print(f"✅ CUDA available: {torch.cuda.is_available()}")
-    except Exception as e:
-        print(f"❌ PyTorch check failed: {e}")
-    
-    # Check other critical imports
-    imports_to_check = [
-        ("torchvision", "torchvision"),
-        ("cv2", "opencv-python"),
-        ("PIL", "Pillow"),
-        ("numpy", "numpy"),
-        ("gradio", "gradio"),
-    ]
-    
-    for module, package in imports_to_check:
-        check_import(module, package)
-    
-    # Check Real-ESRGAN specific imports
-    print("\n🎯 Testing Real-ESRGAN specific imports...")
-    
-    try:
-        from basicsr.archs.rrdbnet_arch import RRDBNet
-        print("✅ basicsr.archs.rrdbnet_arch imported successfully")
-    except ImportError as e:
-        print(f"❌ basicsr import failed: {e}")
-        print("💡 This might be due to the basicsr version issue")
-    
-    try:
-        from realesrgan import RealESRGANer
-        print("✅ RealESRGANer imported successfully")
-    except ImportError as e:
-        print(f"❌ RealESRGANer import failed: {e}")
-    
-    print("\n🎉 Setup completed!")
-    print("💡 If you see import errors above, check your requirements.txt")
-    
-    return True
+def readme():
+    with open('README.md', encoding='utf-8') as f:
+        content = f.read()
+    return content
 
-if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+
+def get_git_hash():
+
+    def _minimal_ext_cmd(cmd):
+        # construct minimal environment
+        env = {}
+        for k in ['SYSTEMROOT', 'PATH', 'HOME']:
+            v = os.environ.get(k)
+            if v is not None:
+                env[k] = v
+        # LANGUAGE is used on win32
+        env['LANGUAGE'] = 'C'
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
+        out = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env).communicate()[0]
+        return out
+
+    try:
+        out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])
+        sha = out.strip().decode('ascii')
+    except OSError:
+        sha = 'unknown'
+
+    return sha
+
+
+def get_hash():
+    if os.path.exists('.git'):
+        sha = get_git_hash()[:7]
+    elif os.path.exists(version_file):
+        try:
+            from realesrgan.version import __version__
+            sha = __version__.split('+')[-1]
+        except ImportError:
+            raise ImportError('Unable to get git version')
+    else:
+        sha = 'unknown'
+
+    return sha
+
+
+def write_version_py():
+    content = """# GENERATED VERSION FILE
+# TIME: {}
+__version__ = '{}'
+__gitsha__ = '{}'
+version_info = ({})
+"""
+    sha = get_hash()
+    with open('VERSION', 'r') as f:
+        SHORT_VERSION = f.read().strip()
+    VERSION_INFO = ', '.join([x if x.isdigit() else f'"{x}"' for x in SHORT_VERSION.split('.')])
+
+    version_file_str = content.format(time.asctime(), SHORT_VERSION, sha, VERSION_INFO)
+    with open(version_file, 'w') as f:
+        f.write(version_file_str)
+
+
+def get_version():
+    with open(version_file, 'r') as f:
+        exec(compile(f.read(), version_file, 'exec'))
+    return locals()['__version__']
+
+
+def get_requirements(filename='requirements.txt'):
+    here = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(here, filename), 'r') as f:
+        requires = [line.replace('\n', '') for line in f.readlines()]
+    return requires
+
+
+if __name__ == '__main__':
+    write_version_py()
+    setup(
+        name='realesrgan',
+        version=get_version(),
+        description='Real-ESRGAN aims at developing Practical Algorithms for General Image Restoration',
+        long_description=readme(),
+        long_description_content_type='text/markdown',
+        author='Xintao Wang',
+        author_email='xintao.wang@outlook.com',
+        keywords='computer vision, pytorch, image restoration, super-resolution, esrgan, real-esrgan',
+        url='https://github.com/xinntao/Real-ESRGAN',
+        include_package_data=True,
+        packages=find_packages(exclude=('options', 'datasets', 'experiments', 'results', 'tb_logger', 'wandb')),
+        classifiers=[
+            'Development Status :: 4 - Beta',
+            'License :: OSI Approved :: Apache Software License',
+            'Operating System :: OS Independent',
+            'Programming Language :: Python :: 3',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+        ],
+        license='BSD-3-Clause License',
+        setup_requires=['cython', 'numpy'],
+        install_requires=get_requirements(),
+        zip_safe=False)
